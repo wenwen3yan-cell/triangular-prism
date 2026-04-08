@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三棱柱的表面展开图</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        .canvas-container { position: relative; width: 100%; height: 500px; }
+        canvas { display: block; }
+        .control-panel {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+        }
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 5px;
+            background: #475569;
+            outline: none;
+            opacity: 0.9;
+            transition: opacity .2s;
+        }
+        .slider:hover { opacity: 1; }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+        }
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+        }
+        .tab-btn {
+            transition: all 0.3s ease;
+        }
+        .tab-btn.active {
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+        /* HTML Labels styling */
+        .vertex-label {
+            position: absolute;
+            font-family: 'Times New Roman', serif;
+            font-weight: bold;
+            font-size: 16px;
+            color: white;
+            text-shadow: 0 0 3px rgba(0,0,0,0.8);
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+        .vertex-label.highlight {
+            color: #ff00ff;
+            font-size: 18px;
+            text-shadow: 0 0 5px rgba(255,0,255,0.8);
+        }
+        .vertex-label sub {
+            font-size: 11px;
+            vertical-align: sub;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4">
+
+    <!-- Header -->
+    <header class="max-w-7xl mx-auto mb-6 text-center">
+        <h1 class="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
+            三棱柱的表面展开图
+        </h1>
+        <p class="text-slate-400">交互式几何教学工具 | 等腰直角三角形底面的直三棱柱</p>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left Panel: Controls -->
+        <div class="control-panel rounded-2xl p-6 h-fit">
+            <h2 class="text-xl font-semibold mb-4 text-blue-300 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                视图控制
+            </h2>
+            
+            <!-- Animation Tabs -->
+            <div class="space-y-3 mb-6">
+                <button onclick="switchAnimation(0)" id="tab-0" class="tab-btn active w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-left font-medium border border-slate-700">
+                    <span class="text-blue-400">视图一</span> 
+                    <span class="text-sm text-slate-400 block mt-1">3D 旋转视图（拖动旋转）</span>
+                </button>
+                
+                <button onclick="switchAnimation(1)" id="tab-1" class="tab-btn w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-left font-medium border border-slate-700">
+                    <span class="text-green-400">动画二</span> 
+                    <span class="text-sm text-slate-400 block mt-1">侧面 C₁CBB₁ 绕 CC₁ 旋转展开</span>
+                </button>
+                
+                <button onclick="switchAnimation(2)" id="tab-2" class="tab-btn w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-left font-medium border border-slate-700">
+                    <span class="text-purple-400">动画三</span> 
+                    <span class="text-sm text-slate-400 block mt-1">侧面 C₁CBB₁ 绕 BB₁ 旋转展开</span>
+                </button>
+                
+                <button onclick="switchAnimation(3)" id="tab-3" class="tab-btn w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-left font-medium border border-slate-700">
+                    <span class="text-orange-400">动画四</span> 
+                    <span class="text-sm text-slate-400 block mt-1">上底面 A₁B₁C₁ 绕 A₁C₁ 旋转</span>
+                </button>
+                
+                <button onclick="switchAnimation(4)" id="tab-4" class="tab-btn w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-left font-medium border border-slate-700">
+                    <span class="text-pink-400">动画五</span> 
+                    <span class="text-sm text-slate-400 block mt-1">上底面 A₁B₁C₁ 绕 A₁B₁ 旋转</span>
+                </button>
+            </div>
+
+            <!-- Slider Control -->
+            <div id="slider-container" class="hidden bg-slate-900/50 rounded-xl p-4 border border-slate-700">
+                <label class="block text-sm font-medium mb-2 text-slate-300">
+                    旋转角度: <span id="angle-display" class="text-blue-400 font-bold text-lg">0°</span>
+                </label>
+                <input type="range" min="0" max="180" value="0" class="slider" id="rotation-slider">
+                <div class="flex justify-between text-xs text-slate-500 mt-1">
+                    <span>0°</span>
+                    <span>90°</span>
+                    <span>180°</span>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="mt-6 p-4 bg-blue-900/20 rounded-xl border border-blue-800/30 text-sm text-blue-200">
+                <p class="font-semibold mb-2">操作说明：</p>
+                <ul class="space-y-1 text-slate-300 list-disc list-inside">
+                    <li>在3D视图中：拖动鼠标旋转视角</li>
+                    <li>在展开动画中：拖动滑块控制展开角度</li>
+                    <li>E 为棱 AA₁ 中点，F 为棱 B₁C₁ 中点</li>
+                    <li>标签会跟随顶点实时移动</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Right Panel: 3D Canvas -->
+        <div class="lg:col-span-2">
+            <div class="control-panel rounded-2xl p-1 border border-slate-700 relative">
+                <div class="canvas-container rounded-xl overflow-hidden bg-gradient-to-b from-slate-900 to-slate-950 relative" id="canvas-container">
+                    <!-- HTML Labels Container -->
+                    <div id="labels-container" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+                </div>
+                
+                <!-- Legend -->
+                <div class="p-4 flex flex-wrap gap-4 justify-center text-sm border-t border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded bg-red-500/80 border border-red-400"></div>
+                        <span class="text-slate-300">侧面 A₁ABB₁</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded bg-green-500/80 border border-green-400"></div>
+                        <span class="text-slate-300">侧面 A₁ACC₁</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded bg-blue-500/80 border border-blue-400"></div>
+                        <span class="text-slate-300">侧面 B₁BCC₁</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded bg-yellow-400/80 border border-yellow-300"></div>
+                        <span class="text-slate-300">底面 ABC / A₁B₁C₁</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mathematical Description -->
+            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="control-panel rounded-xl p-4 border border-slate-700">
+                    <h3 class="font-semibold text-slate-300 mb-2">当前状态</h3>
+                    <p id="status-text" class="text-slate-400 text-sm leading-relaxed">
+                        3D 自由旋转视图。拖动鼠标可从任意角度观察三棱柱结构。E 为 AA₁ 中点，F 为 B₁C₁ 中点。
+                    </p>
+                </div>
+                <div class="control-panel rounded-xl p-4 border border-slate-700">
+                    <h3 class="font-semibold text-slate-300 mb-2">几何参数</h3>
+                    <div class="text-slate-400 text-sm space-y-1 font-mono">
+                        <div>底面：等腰直角三角形（∠A = 90°）</div>
+                        <div>侧棱：AA₁ = BB₁ = CC₁ = h</div>
+                        <div>顶点：A, B, C, A₁, B₁, C₁</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Global variables
+        let scene, camera, renderer, controls;
+        let prismGroup;
+        let currentAnimation = 0;
+        let sliderValue = 0;
+        let labelElements = {};
+        let currentVertices = {};
+        
+        // Geometry parameters
+        const size = 2.5; // Base size
+        const height = 3.5; // Prism height
+        
+        // Colors
+        const colors = {
+            side1: 0xef4444, // Red - A1ABB1
+            side2: 0x22c55e, // Green - A1ACC1  
+            side3: 0x3b82f6, // Blue - B1BCC1
+            base: 0xfacc15,  // Yellow - bases
+            edge: 0xffffff,
+            highlight: 0xff00ff
+        };
+
+        // Initialize Three.js
+        function init() {
+            const container = document.getElementById('canvas-container');
+            
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a);
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(10, 8, 10);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+            
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 7);
+            scene.add(directionalLight);
+            
+            // Create initial prism
+            createPrism();
+            
+            // Handle resize
+            window.addEventListener('resize', onWindowResize);
+            
+            // Animation loop
+            animate();
+        }
+
+        function createLabelElements() {
+            const container = document.getElementById('labels-container');
+            container.innerHTML = '';
+            labelElements = {};
+            
+            const labels = [
+                { id: 'A', text: 'A', highlight: false },
+                { id: 'B', text: 'B', highlight: false },
+                { id: 'C', text: 'C', highlight: false },
+                { id: 'A1', text: 'A<sub>1</sub>', highlight: false },
+                { id: 'B1', text: 'B<sub>1</sub>', highlight: false },
+                { id: 'C1', text: 'C<sub>1</sub>', highlight: false },
+                { id: 'E', text: 'E', highlight: true },
+                { id: 'F', text: 'F', highlight: true }
+            ];
+            
+            labels.forEach(label => {
+                const div = document.createElement('div');
+                div.className = 'vertex-label' + (label.highlight ? ' highlight' : '');
+                div.innerHTML = label.text;
+                div.id = 'label-' + label.id;
+                container.appendChild(div);
+                labelElements[label.id] = div;
+            });
+        }
+
+        function updateLabels() {
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            
+            // Update all label positions
+            for (let id in currentVertices) {
+                const vertex = currentVertices[id];
+                const label = labelElements[id];
+                if (!label || !vertex) continue;
+                
+                // Project 3D position to 2D screen space
+                const vector = vertex.clone();
+                vector.project(camera);
+                
+                // Convert to CSS coordinates
+                const x = (vector.x * 0.5 + 0.5) * width;
+                const y = (-vector.y * 0.5 + 0.5) * height;
+                
+                // Check if behind camera
+                if (vector.z > 1) {
+                    label.style.display = 'none';
+                } else {
+                    label.style.display = 'block';
+                    label.style.left = x + 'px';
+                    label.style.top = y + 'px';
+                    
+                    // Scale based on distance for depth effect
+                    const distance = camera.position.distanceTo(vertex);
+                    const scale = Math.max(0.7, Math.min(1.2, 15 / distance));
+                    label.style.transform = `translate(-50%, -50%) scale(${scale})`;
+                }
+            }
+        }
+
+        function createPrism() {
+            // Clear existing
+            if (prismGroup) scene.remove(prismGroup);
+            
+            prismGroup = new THREE.Group();
+            
+            // Define vertices for isosceles right triangle base
+            // A at right angle (origin), AB along x-axis, AC along z-axis
+            const A = new THREE.Vector3(0, 0, 0);
+            const B = new THREE.Vector3(size, 0, 0);
+            const C = new THREE.Vector3(0, 0, size);
+            const A1 = new THREE.Vector3(0, height, 0);
+            const B1 = new THREE.Vector3(size, height, 0);
+            const C1 = new THREE.Vector3(0, height, size);
+            
+            // Calculate midpoints
+            const E = new THREE.Vector3().addVectors(A, A1).multiplyScalar(0.5);
+            const F = new THREE.Vector3().addVectors(B1, C1).multiplyScalar(0.5);
+            
+            // Store current vertices for label tracking
+            currentVertices = {
+                'A': A.clone(), 'B': B.clone(), 'C': C.clone(),
+                'A1': A1.clone(), 'B1': B1.clone(), 'C1': C1.clone(),
+                'E': E.clone(), 'F': F.clone()
+            };
+            
+            // Create faces based on current animation
+            switch(currentAnimation) {
+                case 0: // 3D View
+                    create3DPrism(A, B, C, A1, B1, C1, E, F);
+                    break;
+                case 1: // Animation 2: Rotate side B1BCC1 around CC1
+                    createAnimation2(A, B, C, A1, B1, C1, E, F);
+                    break;
+                case 2: // Animation 3: Rotate side B1BCC1 around BB1
+                    createAnimation3(A, B, C, A1, B1, C1, E, F);
+                    break;
+                case 3: // Animation 4: Rotate top base around A1C1
+                    createAnimation4(A, B, C, A1, B1, C1, E, F);
+                    break;
+                case 4: // Animation 5: Rotate top base around A1B1
+                    createAnimation5(A, B, C, A1, B1, C1, E, F);
+                    break;
+            }
+            
+            scene.add(prismGroup);
+            
+            // Center the group
+            const box = new THREE.Box3().setFromObject(prismGroup);
+            const center = box.getCenter(new THREE.Vector3());
+            prismGroup.position.sub(center);
+            
+            // Update stored vertices with group offset
+            for (let id in currentVertices) {
+                currentVertices[id].sub(center);
+            }
+        }
+
+        function createFace(vertices, color, opacity = 0.75) {
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const indices = [];
+            
+            vertices.forEach(v => positions.push(v.x, v.y, v.z));
+            
+            // Create triangles
+            for (let i = 1; i < vertices.length - 1; i++) {
+                indices.push(0, i, i + 1);
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setIndex(indices);
+            geometry.computeVertexNormals();
+            
+            const material = new THREE.MeshPhongMaterial({ 
+                color: color, 
+                transparent: true, 
+                opacity: opacity,
+                side: THREE.DoubleSide,
+                shininess: 100
+            });
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            prismGroup.add(mesh);
+            
+            // Add edges
+            const edges = new THREE.EdgesGeometry(geometry);
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: colors.edge, linewidth: 2 }));
+            prismGroup.add(line);
+            
+            return mesh;
+        }
+
+        function createLine(p1, p2, color = colors.highlight, linewidth = 4) {
+            const geometry = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+            const material = new THREE.LineBasicMaterial({ color: color, linewidth: linewidth });
+            const line = new THREE.Line(geometry, material);
+            line.material.depthTest = false; // Ensure line is always visible
+            line.renderOrder = 999;
+            prismGroup.add(line);
+            return line;
+        }
+
+        function create3DPrism(A, B, C, A1, B1, C1, E, F) {
+            // Side faces
+            createFace([A, B, B1, A1], colors.side1); // A1ABB1 - Red
+            createFace([A, C, C1, A1], colors.side2); // A1ACC1 - Green
+            createFace([B, C, C1, B1], colors.side3); // B1BCC1 - Blue
+            
+            // Bases
+            createFace([A, B, C], colors.base); // ABC - Yellow
+            createFace([A1, B1, C1], colors.base); // A1B1C1 - Yellow
+            
+            // EF line
+            createLine(E, F, 0xff00ff, 5);
+        }
+
+        function createAnimation2(A, B, C, A1, B1, C1, E, F) {
+            const angle = (sliderValue * Math.PI) / 180;
+            
+            // Fixed faces
+            createFace([A, B, B1, A1], colors.side1); // A1ABB1 - Red
+            createFace([A, C, C1, A1], colors.side2); // A1ACC1 - Green
+            
+            // Bases
+            createFace([A, B, C], colors.base); // ABC
+            createFace([A1, B1, C1], colors.base); // A1B1C1
+            
+            // Rotating face B1BCC1 around CC1 axis
+            const axis = new THREE.Vector3().subVectors(C1, C).normalize();
+            const pivot = C.clone();
+            
+            // Points to rotate: B and B1
+            const B_rot = rotatePointAroundAxis(B, pivot, axis, angle);
+            const B1_rot = rotatePointAroundAxis(B1, pivot, axis, angle);
+            
+            createFace([C, B_rot, B1_rot, C1], colors.side3); // Rotated blue face
+            
+            // Update F position (midpoint of B1_rot C1)
+            const F_new = new THREE.Vector3().addVectors(B1_rot, C1).multiplyScalar(0.5);
+            currentVertices['F'] = F_new;
+            currentVertices['B1'] = B1_rot;
+            currentVertices['B'] = B_rot;
+            
+            // E stays the same
+            currentVertices['E'] = E.clone();
+            
+            // Draw EF line
+            createLine(E, F_new, 0xff00ff, 5);
+        }
+
+        function createAnimation3(A, B, C, A1, B1, C1, E, F) {
+            const angle = (sliderValue * Math.PI) / 180;
+            
+            // Fixed faces
+            createFace([A, B, B1, A1], colors.side1); // A1ABB1 - Red
+            createFace([A, C, C1, A1], colors.side2); // A1ACC1 - Green
+            
+            // Bases
+            createFace([A, B, C], colors.base);
+            createFace([A1, B1, C1], colors.base);
+            
+            // Rotating face B1BCC1 around BB1 axis
+            const axis = new THREE.Vector3().subVectors(B1, B).normalize();
+            const pivot = B.clone();
+            
+            // Points to rotate: C and C1 (negative angle for correct unfolding direction)
+            const C_rot = rotatePointAroundAxis(C, pivot, axis, -angle);
+            const C1_rot = rotatePointAroundAxis(C1, pivot, axis, -angle);
+            
+            createFace([B, C_rot, C1_rot, B1], colors.side3);
+            
+            // Update vertices
+            currentVertices['C'] = C_rot;
+            currentVertices['C1'] = C1_rot;
+            
+            // Update F (midpoint of B1 C1_rot)
+            const F_new = new THREE.Vector3().addVectors(B1, C1_rot).multiplyScalar(0.5);
+            currentVertices['F'] = F_new;
+            
+            // Draw EF
+            createLine(E, F_new, 0xff00ff, 5);
+        }
+
+        function createAnimation4(A, B, C, A1, B1, C1, E, F) {
+            const angle = (sliderValue * Math.PI) / 180;
+            
+            // Fixed faces
+            createFace([A, B, B1, A1], colors.side1); // A1ABB1 - Red
+            createFace([A, C, C1, A1], colors.side2); // A1ACC1 - Green
+            createFace([B, C, C1, B1], colors.side3); // B1BCC1 - Blue
+            
+            // Bottom base
+            createFace([A, B, C], colors.base);
+            
+            // Rotating top base A1B1C1 around A1C1 axis
+            const axis = new THREE.Vector3().subVectors(C1, A1).normalize();
+            const pivot = A1.clone();
+            
+            // Rotate B1
+            const B1_rot = rotatePointAroundAxis(B1, pivot, axis, angle);
+            
+            createFace([A1, B1_rot, C1], colors.base);
+            
+            // Update vertices
+            currentVertices['B1'] = B1_rot;
+            
+            // Update F (midpoint of B1_rot C1)
+            const F_new = new THREE.Vector3().addVectors(B1_rot, C1).multiplyScalar(0.5);
+            currentVertices['F'] = F_new;
+            
+            // Draw EF
+            createLine(E, F_new, 0xff00ff, 5);
+        }
+
+        function createAnimation5(A, B, C, A1, B1, C1, E, F) {
+            const angle = (sliderValue * Math.PI) / 180;
+            
+            // Fixed faces
+            createFace([A, B, B1, A1], colors.side1); // A1ABB1 - Red
+            createFace([A, C, C1, A1], colors.side2); // A1ACC1 - Green
+            createFace([B, C, C1, B1], colors.side3); // B1BCC1 - Blue
+            
+            // Bottom base
+            createFace([A, B, C], colors.base);
+            
+            // Rotating top base A1B1C1 around A1B1 axis
+            const axis = new THREE.Vector3().subVectors(B1, A1).normalize();
+            const pivot = A1.clone();
+            
+            // Rotate C1
+            const C1_rot = rotatePointAroundAxis(C1, pivot, axis, -angle);
+            
+            createFace([A1, B1, C1_rot], colors.base);
+            
+            // Update vertices
+            currentVertices['C1'] = C1_rot;
+            
+            // Update F (midpoint of B1 C1_rot)
+            const F_new = new THREE.Vector3().addVectors(B1, C1_rot).multiplyScalar(0.5);
+            currentVertices['F'] = F_new;
+            
+            // Draw EF
+            createLine(E, F_new, 0xff00ff, 5);
+        }
+
+        function rotatePointAroundAxis(point, pivot, axis, angle) {
+            const vector = new THREE.Vector3().subVectors(point, pivot);
+            vector.applyAxisAngle(axis, angle);
+            return new THREE.Vector3().addVectors(pivot, vector);
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            
+            // Update label positions every frame
+            if (prismGroup) {
+                updateLabels();
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        // UI Functions
+        function switchAnimation(index) {
+            currentAnimation = index;
+            
+            // Update tabs
+            document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+                if (i === index) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+            
+            // Show/hide slider
+            const sliderContainer = document.getElementById('slider-container');
+            const statusText = document.getElementById('status-text');
+            
+            if (index === 0) {
+                sliderContainer.classList.add('hidden');
+                controls.enabled = true;
+                statusText.innerHTML = '3D 自由旋转视图。拖动鼠标可从任意角度观察三棱柱结构。E 为 AA₁ 中点，F 为 B₁C₁ 中点。标签会跟随顶点移动。';
+            } else {
+                sliderContainer.classList.remove('hidden');
+                controls.enabled = false;
+                document.getElementById('rotation-slider').value = 0;
+                sliderValue = 0;
+                document.getElementById('angle-display').textContent = '0°';
+                
+                const descriptions = [
+                    '',
+                    '将侧面 C₁CBB₁ 绕棱 CC₁ 向外旋转展开。观察随着旋转角度增大，侧面与侧面 A₁ACC₁ 逐渐共面。E 为 AA₁ 中点，F 为 B₁C₁ 中点。',
+                    '将侧面 C₁CBB₁ 绕棱 BB₁ 向外旋转展开。观察侧面与侧面 A₁ABB₁ 的展开过程。E 为 AA₁ 中点，F 随旋转移动。',
+                    '将上底面 A₁B₁C₁ 绕棱 A₁C₁ 向下旋转展开。观察底面与侧面 A₁ACC₁ 的展开过程。',
+                    '将上底面 A₁B₁C₁ 绕棱 A₁B₁ 向下旋转展开。观察底面与侧面 A₁ABB₁ 的展开过程。'
+                ];
+                statusText.innerHTML = descriptions[index];
+            }
+            
+            createPrism();
+        }
+
+        // Slider event
+        document.getElementById('rotation-slider').addEventListener('input', function(e) {
+            sliderValue = parseFloat(e.target.value);
+            document.getElementById('angle-display').textContent = sliderValue + '°';
+            createPrism();
+        });
+
+        // Initialize labels
+        createLabelElements();
+        
+        // Initialize
+        init();
+    </script>
+</body>
+</html>
